@@ -1,0 +1,54 @@
+---
+// Opt-in OWLS intent-preparation island.
+//
+// Emits NOTHING unless the build sets PUBLIC_OWLS_INTENT="1".
+//
+// WHY THIS USES `is:inline` AND READS ITS OWN SOURCE
+// A plain Astro <script> is processed, hoisted and bundled at BUILD time. That
+// happens because the component is part of the page's render tree, and it is
+// not reliably undone by wrapping the tag in a runtime conditional — so a
+// conditional plain <script> can still add a <script src="/_astro/..."> to the
+// page even when the condition is false. That would silently break this site's
+// "ships zero script tags" property, which is the whole point of the default.
+//
+// `is:inline` is the escape hatch: Astro leaves such a script completely alone,
+// so it exists in the output only if this component actually renders it. To keep
+// src/lib/intent.mjs as the single source of truth while still inlining, the
+// module's source is read at build time and embedded. intent.mjs has no imports
+// of its own, which is what makes that safe.
+//
+// TRADE-OFFS, stated plainly:
+//   * The inlined code is not bundled, minified or hashed by Astro.
+//   * An inline script needs a CSP that permits it. GitHub Pages sets no CSP
+//     today, so nothing is broken now; a future CSP would need a nonce or hash.
+//   * When enabled, the page gains a script tag. That is a real change to the
+//     page's contract, not a free addition.
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import process from "node:process";
+
+/**
+ * @type {{ descriptors?: Array<{ href: string, bytes?: number }> }}
+ */
+const { descriptors = [] } = Astro.props;
+
+const enabled = import.meta.env.PUBLIC_OWLS_INTENT === "1" && descriptors.length > 0;
+
+// Read the module source only when it will actually be used.
+const source = enabled
+  ? readFileSync(path.resolve(process.cwd(), "src/lib/intent.mjs"), "utf8")
+  : "";
+
+const bootstrap = enabled
+  ? `${source}
+// --- bootstrap appended by src/components/OwlsIntent.astro ---
+try {
+  attach(${JSON.stringify(descriptors)});
+} catch {
+  /* speculative preparation must never break the page */
+}
+`
+  : "";
+---
+
+{enabled && <script type="module" is:inline set:html={bootstrap} />}

@@ -1,0 +1,65 @@
+name: owls-manifests
+
+# Validates the OWLS release manifests under public/releases/ using the same
+# dependency-free code path the Astro build uses. Runs before any install, so a
+# malformed manifest fails here rather than during a deploy build.
+#
+# Every external action below is pinned to a 40-character commit SHA copied
+# verbatim from this repository's existing .github/workflows/pages.yml. No SHA
+# was invented, and no action is used that does not already appear there.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - ".github/workflows/owls-manifests.yml"
+      - "public/releases/**"
+      - "scripts/validate-releases.mjs"
+      - "src/lib/**"
+      - "src/components/OwlsIntent.astro"
+  pull_request:
+    paths:
+      - ".github/workflows/owls-manifests.yml"
+      - "public/releases/**"
+      - "scripts/validate-releases.mjs"
+      - "src/lib/**"
+      - "src/components/OwlsIntent.astro"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: owls-manifests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: "22.22.1"
+
+      - name: Syntax-check the dependency-free modules
+        run: |
+          set -euo pipefail
+          node --check scripts/validate-releases.mjs
+          node --check src/lib/prepare.mjs
+          node --check src/lib/intent.mjs
+
+      - name: Validate every committed release manifest
+        run: node scripts/validate-releases.mjs
+
+      - name: Reject unresolved conflict markers
+        run: |
+          set -euo pipefail
+          if git grep -nE '^(<<<<<<< |=======$|>>>>>>> )' -- public/releases src/lib src/components scripts; then
+            echo 'unresolved conflict marker detected' >&2
+            exit 1
+          fi
