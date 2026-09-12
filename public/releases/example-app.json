@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "appId": "example-app",
+  "release": "0000-00-00.EXAMPLE-NOT-A-REAL-RELEASE",
+  "runtime": "raw-wasm",
+  "entrypoint": "app-wasm",
+  "assets": [
+    {
+      "id": "app-wasm",
+      "url": "https://example.invalid/owls/example/app.wasm",
+      "kind": "wasm",
+      "bytes": 1048576,
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "prepare": true
+    },
+    {
+      "id": "app-data",
+      "url": "https://example.invalid/owls/example/app.data",
+      "kind": "data",
+      "bytes": 262144,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "prepare": false
+    }
+  ],
+  "extensions": {
+    "note": "EXAMPLE ONLY. This is documentation, not a deployed release. The filename begins with 'example', so src/lib/prepare.mjs validates this file and then discards it before any origin check: it can never produce a resource hint. The host example.invalid is reserved by RFC 2606 and never resolves. The sha256 values are placeholders and are deliberately not real digests. See README.md in this directory.",
+    "ghaIndieWorker": {
+      "repository": "gha-indie-worker/EXAMPLE-REPOSITORY",
+      "deploySurface": "user-app"
+    }
+  }
+}

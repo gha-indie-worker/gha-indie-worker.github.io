@@ -65,6 +65,15 @@ const visualItems = [
   ]
 ];
 const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://gha-indie-worker.github.io");
+// owls:hints:start
+// OWLS build-time resource hints. Additive; see docs/owls-pilot.md.
+// collectHints() reads public/releases/*.json at build time only. It returns
+// empty arrays when there is no manifest, and throws when a committed manifest
+// is malformed or names a non-allowlisted origin.
+import { collectHints } from "../lib/prepare.mjs";
+import OwlsIntent from "../components/OwlsIntent.astro";
+const owlsHints = collectHints();
+// owls:hints:end
 ---
 
 <!doctype html>
@@ -76,6 +85,27 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? "https://gha-indie-w
     <meta name="description" content={site.description} />
     <meta name="theme-color" content={site.palette.paper} />
     <link rel="canonical" href={canonical} />
+    <!-- owls:hints:start -->
+    {/* Declarative OWLS preparation. Zero JavaScript; renders nothing when
+        public/releases/ holds no real manifest, which is today's state. */}
+    {owlsHints.origins.map((origin) => (
+      <Fragment>
+        <link rel="preconnect" href={origin} crossorigin="anonymous" />
+        <link rel="dns-prefetch" href={origin} />
+      </Fragment>
+    ))}
+    {owlsHints.links.map((hint) => (
+      <link
+        rel={hint.rel}
+        href={hint.href}
+        as={hint.as}
+        crossorigin={hint.crossorigin}
+        referrerpolicy={hint.referrerpolicy}
+      />
+    ))}
+    {/* Opt-in JS tier. Emits nothing unless PUBLIC_OWLS_INTENT === "1". */}
+    <OwlsIntent descriptors={owlsHints.intent} />
+    <!-- owls:hints:end -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content={site.title} />
     <meta property="og:description" content={site.description} />
